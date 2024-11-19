@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class CharacterSoundFXManager : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class CharacterSoundFXManager : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
     }
 
+    public void PlaySoundFX(AudioClip audioClip, float volume = 1){
+        audioSource.PlayOneShot(audioClip, volume);
+
+    }
     public void PlayRollSoundFX(){
         audioSource.PlayOneShot(WorldSoundFXManager.instance.rollSFX);
     }

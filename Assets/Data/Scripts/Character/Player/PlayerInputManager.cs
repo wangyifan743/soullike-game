@@ -24,7 +24,18 @@ public class PlayerInputManager : MonoBehaviour
     [SerializeField] public bool dodgeInput; 
     [SerializeField] public bool jumpInput;
     [SerializeField] public bool isSprinting;
+    [SerializeField] bool switchRightWeaponInput = false;
+    [SerializeField] bool switchLeftWeaponInput = false;
+
+    [Header("Bumper Input")]
     [SerializeField] public bool leftMouseInput;
+
+    [Header("Lock On")]
+    [SerializeField] bool lockOnInput;
+
+    [Header("Trigger Input")]
+    [SerializeField] bool rightMouseInput;
+    [SerializeField] bool holdShiftInput;
 
     
     [SerializeField] public bool isRunning;
@@ -58,6 +69,11 @@ public class PlayerInputManager : MonoBehaviour
         HandleSprintInput();
         HandleJumpInput();
         HandleLeftMouseInput();
+        HandleLockOn();
+        HandleRightMouseInput();
+        HandleChargeRightMouseInput();
+        HandleSwitchRightWeaponInput();
+        HandleSwitchLeftWeaponInput();
     }
 
     private void OnSceneChange(Scene oldScene, Scene newScene){
@@ -82,6 +98,16 @@ public class PlayerInputManager : MonoBehaviour
             playerControls.PlayerActions.Sprint.canceled += i => isSprinting = false;
             playerControls.PlayerActions.Jump.performed += i => jumpInput = true;
             playerControls.PlayerActions.LeftMouse.performed += i=> leftMouseInput = true;
+            playerControls.PlayerActions.Lockon.performed += i => lockOnInput = true;
+
+            // triggers
+            playerControls.PlayerActions.RightMouse.performed += i => rightMouseInput = true;
+            playerControls.PlayerActions.HoldShift.performed += i => holdShiftInput = true;
+            playerControls.PlayerActions.HoldShift.canceled += i => holdShiftInput = false;
+
+            // switch weapon
+            playerControls.PlayerActions.SwitchRightWeapon.performed += i => switchRightWeaponInput = true;
+            playerControls.PlayerActions.SwitchLeftWeapon.performed += i => switchLeftWeaponInput = true;
 
         }
 
@@ -103,6 +129,55 @@ public class PlayerInputManager : MonoBehaviour
         
         playerManager.playerAnimatorManager.UpdateAnimatorMovementParameters(0, moveAmount);
 
+    }
+
+    private void HandleSwitchRightWeaponInput(){
+        if(switchRightWeaponInput){
+            switchRightWeaponInput = false;
+            playerManager.playerEquipmentManager.SwitchRightWeapon();
+        }
+    }
+
+    private void HandleSwitchLeftWeaponInput(){
+        if(switchLeftWeaponInput){
+            switchLeftWeaponInput = false;
+            playerManager.playerEquipmentManager.SwitchLeftWeapon();
+        }
+    }
+
+
+    private void HandleLockOn(){
+        
+        if(lockOnInput){
+            if(playerManager.playerNetworkManager.isLockedOn.Value){
+                if(playerManager.playerCombatManager.currentAttackTarget == null) return;
+                if(playerManager.playerCombatManager.currentAttackTarget.isDead.Value == true){
+                    playerManager.playerNetworkManager.isLockedOn.Value = false;
+                }
+
+
+
+            }
+        }
+        // 解锁
+        if(lockOnInput && playerManager.playerNetworkManager.isLockedOn.Value){
+            lockOnInput = false;
+            playerManager.playerNetworkManager.isLockedOn.Value = false;
+            PlayerCamera.instance.ClearLockOnTargets();
+            
+            return;
+        }
+        // 锁定
+        if(lockOnInput && !playerManager.playerNetworkManager.isLockedOn.Value){
+            lockOnInput = false;
+            PlayerCamera.instance.HandleLocatingLockOnTarget();
+            if(PlayerCamera.instance.nearestLockOnTarget != null){
+                playerManager.playerNetworkManager.isLockedOn.Value = true;
+                playerManager.playerCombatManager.SetTarget(PlayerCamera.instance.nearestLockOnTarget);
+
+            }
+            
+        }
     }
 
     private void HandleCameraMovementInput(){
@@ -136,7 +211,7 @@ public class PlayerInputManager : MonoBehaviour
         }
         
     }
-
+    // 轻击
     private void HandleLeftMouseInput(){
         if(leftMouseInput){
             leftMouseInput = false;
@@ -145,6 +220,26 @@ public class PlayerInputManager : MonoBehaviour
 
             playerManager.playerCombatManager.performWeaponBasedAction(playerManager.playerInventoryManager.currentRightHandWeapon.ohLeftMouseAction,
                                                                         playerManager.playerInventoryManager.currentRightHandWeapon);
+        }
+    }
+    // 重击
+    private void HandleRightMouseInput(){
+        if(rightMouseInput){
+            rightMouseInput = false;
+
+            playerManager.playerNetworkManager.SetCharacterActionHand(true);
+
+            playerManager.playerCombatManager.performWeaponBasedAction(playerManager.playerInventoryManager.currentRightHandWeapon.ohRightMouseAction,
+                                                                        playerManager.playerInventoryManager.currentRightHandWeapon);
+        }
+    }
+
+    // 蓄力重击
+    private void HandleChargeRightMouseInput(){
+        if(playerManager.isPerformingAction){
+            if(playerManager.playerNetworkManager.isUsingRightHand.Value){
+                playerManager.playerNetworkManager.isChargingAttack.Value = holdShiftInput;
+            }
         }
     }
 

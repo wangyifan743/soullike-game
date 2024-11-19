@@ -9,6 +9,12 @@ public class CharacterAnimatorManager : MonoBehaviour
     [SerializeField]float clappedHorizontalInput;
     [SerializeField]float clappedVerticalInput;
 
+    [Header("Damage Animations")]
+    public string hit_Forward_Medium_01 = "hit_Forward_Medium_01";
+    public string hit_Backward_Medium_01 = "hit_Backward_Medium_01";
+    public string hit_Left_Medium_01 = "hit_Left_Medium_01";
+    public string hit_Right_Medium_01 = "hit_Right_Medium_01";
+
     protected virtual void Awake(){
         characterManager = GetComponent<CharacterManager>();
     }
@@ -45,6 +51,7 @@ public class CharacterAnimatorManager : MonoBehaviour
                                             bool canMove = false,
                                             bool canRotate = false){
         characterManager.characterCombatManager.currentAttackType = attackType;
+        characterManager.characterCombatManager.lastAttackAnimationPerformed = targetAnimation;
         characterManager.animator.applyRootMotion = apllyRootmotion;
         characterManager.animator.CrossFade(targetAnimation, 0.2f);
         characterManager.isPerformingAction = isPerformingAction;
@@ -54,6 +61,15 @@ public class CharacterAnimatorManager : MonoBehaviour
         characterManager.characterNetworkManager.NotifyTheServerOfAttackActionAnimationServerRpc(NetworkManager.Singleton.LocalClientId,
                                                                                     targetAnimation, 
                                                                                     apllyRootmotion);
+    }
+
+
+    public virtual void EnableCanDoCombo(){
+        
+    }
+
+    public virtual void DisableCanDoCombo(){
+
     }
 
 }

@@ -6,6 +6,7 @@ using UnityEngine;
 public class LightAttcakWeaponItemAction : WeaponItemAction
 {
     [SerializeField] string light_Attack_01 = "Main_Light_Attack_01";
+    [SerializeField] string light_Attack_02 = "Main_Light_Attack_02";
     public override void AttemptToPerformAction(PlayerManager playerManager, WeaponItem weaponItem)
     {
         base.AttemptToPerformAction(playerManager, weaponItem);
@@ -22,12 +23,22 @@ public class LightAttcakWeaponItemAction : WeaponItemAction
         PerformLightAttack(playerManager, weaponItem);
     }
 
-    private void PerformLightAttack(PlayerManager playerManager, WeaponItem weaponItem){
-        if(playerManager.playerNetworkManager.isUsingRightHand.Value){
-            playerManager.playerAnimatorManager.PlayTargetAttackActionAnimation(AttackType.LightAttack01, light_Attack_01, true);
-        }
-        if(playerManager.playerNetworkManager.isUsingLeftHand.Value){
+    private void PerformLightAttack(PlayerManager playerPerformingAction, WeaponItem weaponPerformingAction){
 
+        if(playerPerformingAction.playerCombatManager.canComboWithMainHandWeapon && playerPerformingAction.isPerformingAction){
+            playerPerformingAction.playerCombatManager.canComboWithMainHandWeapon = false;
+
+            if(playerPerformingAction.playerCombatManager.lastAttackAnimationPerformed == light_Attack_01){
+                playerPerformingAction.playerAnimatorManager.PlayTargetAttackActionAnimation(AttackType.LightAttack02, light_Attack_02, true);
+            }
+            else{
+                playerPerformingAction.playerAnimatorManager.PlayTargetAttackActionAnimation(AttackType.LightAttack01, light_Attack_01, true);
+            }
         }
+        else if(!playerPerformingAction.isPerformingAction)
+        {
+            playerPerformingAction.playerAnimatorManager.PlayTargetAttackActionAnimation(AttackType.LightAttack01, light_Attack_01, true);
+        }
+        
     }
 }

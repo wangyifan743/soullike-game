@@ -3,12 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using Unity.Netcode;
+using Unity.VisualScripting;
 
 public class PlayerManager : CharacterManager
 {
-    [Header("Debug Menu")]
-    [SerializeField] bool SwitchLeftWeapon = false;
-    [SerializeField] bool SwitchRightWeapon = false;
 
     [HideInInspector]public PlayerLocomotionManager playerLocomotionManager;
     [HideInInspector]public PlayerAnimatorManager playerAnimatorManager;
@@ -51,7 +50,6 @@ public class PlayerManager : CharacterManager
 
         playerStatsManager.RegenerateStamina();
 
-        DebugMenu();
     }
 
     protected override void LateUpdate()
@@ -64,6 +62,7 @@ public class PlayerManager : CharacterManager
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnectedCallBack;
         if(IsOwner){
             PlayerCamera.instance.playerManager = this;
             PlayerInputManager.instance.playerManager = this;
@@ -77,15 +76,69 @@ public class PlayerManager : CharacterManager
             // 更新当前状态
             playerNetworkManager.currentStamina.OnValueChanged += PlayerUIManager.instance.playerUIHUDManager.SetNewStaminaValue;
             playerNetworkManager.currentStamina.OnValueChanged += playerStatsManager.ResetStaminaGenerationTimerAndMaxStamina;
-
             playerNetworkManager.currentHealth.OnValueChanged += PlayerUIManager.instance.playerUIHUDManager.SetNewHealthValue;
 
-            playerNetworkManager.currentLeftHandWeaponID.OnValueChanged += playerNetworkManager.OnCurrentleftHandWeaponIDChange;
-            playerNetworkManager.currentRightHandWeaponID.OnValueChanged += playerNetworkManager.OnCurrentRightHandWeaponIDChange;
-            playerNetworkManager.currentWeaponBeingUsedID.OnValueChanged += playerNetworkManager.OnCurrentWeaponBeingUsedIDChange;
         }
-        
+        // HP
         playerNetworkManager.currentHealth.OnValueChanged += playerNetworkManager.CheckHP;
+        // lock on
+        playerNetworkManager.isLockedOn.OnValueChanged += playerNetworkManager.OnLockOnChange;
+        playerNetworkManager.currentTargetNetworkObjectID.OnValueChanged += playerNetworkManager.OnLockOnIDChange;
+        // equipment
+        playerNetworkManager.currentLeftHandWeaponID.OnValueChanged += playerNetworkManager.OnCurrentleftHandWeaponIDChange;
+        playerNetworkManager.currentRightHandWeaponID.OnValueChanged += playerNetworkManager.OnCurrentRightHandWeaponIDChange;
+        playerNetworkManager.currentWeaponBeingUsedID.OnValueChanged += playerNetworkManager.OnCurrentWeaponBeingUsedIDChange;
+
+        // flags
+        playerNetworkManager.isChargingAttack.OnValueChanged += playerNetworkManager.OnISChargingAttackChange;
+
+        if(IsOwner && !IsServer){
+            LoadGameDataFromCurrentCharacterData(ref WorldSaveManager.instance.currentCharacterData);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnectedCallBack;
+        if(IsOwner){
+            // 更新最大状态
+            playerNetworkManager.vitality.OnValueChanged -= playerNetworkManager.SetMaxHealthValue;
+            playerNetworkManager.endurance.OnValueChanged -= playerNetworkManager.SetMaxStaminaValue;
+            
+
+            // 更新当前状态
+            playerNetworkManager.currentStamina.OnValueChanged -= PlayerUIManager.instance.playerUIHUDManager.SetNewStaminaValue;
+            playerNetworkManager.currentStamina.OnValueChanged -= playerStatsManager.ResetStaminaGenerationTimerAndMaxStamina;
+            playerNetworkManager.currentHealth.OnValueChanged -= PlayerUIManager.instance.playerUIHUDManager.SetNewHealthValue;
+
+        }
+        // HP
+        playerNetworkManager.currentHealth.OnValueChanged -= playerNetworkManager.CheckHP;
+        // lock on
+        playerNetworkManager.isLockedOn.OnValueChanged -= playerNetworkManager.OnLockOnChange;
+        playerNetworkManager.currentTargetNetworkObjectID.OnValueChanged -= playerNetworkManager.OnLockOnIDChange;
+        // equipment
+        playerNetworkManager.currentLeftHandWeaponID.OnValueChanged -= playerNetworkManager.OnCurrentleftHandWeaponIDChange;
+        playerNetworkManager.currentRightHandWeaponID.OnValueChanged -= playerNetworkManager.OnCurrentRightHandWeaponIDChange;
+        playerNetworkManager.currentWeaponBeingUsedID.OnValueChanged -= playerNetworkManager.OnCurrentWeaponBeingUsedIDChange;
+
+        // flags
+        playerNetworkManager.isChargingAttack.OnValueChanged -= playerNetworkManager.OnISChargingAttackChange;
+
+    }
+
+    private void OnClientConnectedCallBack(ulong clientID){
+        WorldGameSessionManager.instance.AddPlayerToActivePlayerList(this);
+
+        if(!IsServer && IsOwner){
+            foreach (var player in WorldGameSessionManager.instance.players)
+            {
+                if(player!=this){
+                    player.LoadOtherPlayerWhenJoiningServer();
+                }
+            }
+        }
     }
 
     public override IEnumerator ProcessDeathEvent(bool manuallySelectDeathAnimation = false)
@@ -139,18 +192,16 @@ public class PlayerManager : CharacterManager
         PlayerUIManager.instance.playerUIHUDManager.SetCurrentHealthValue(playerNetworkManager.currentHealth.Value);
     }
 
+    public void LoadOtherPlayerWhenJoiningServer(){
+        // weapon
+        playerNetworkManager.OnCurrentRightHandWeaponIDChange(0, playerNetworkManager.currentRightHandWeaponID.Value);
+        playerNetworkManager.OnCurrentleftHandWeaponIDChange(0, playerNetworkManager.currentLeftHandWeaponID.Value);
 
-    private void DebugMenu(){
-
-        if(SwitchLeftWeapon){
-            SwitchLeftWeapon = false;
-            playerEquipmentManager.SwitchLeftWeapon();
-        }
-
-        if(SwitchRightWeapon){
-            SwitchRightWeapon = false;
-            playerEquipmentManager.SwitchRightWeapon();
+        // lock on
+        if(playerNetworkManager.isLockedOn.Value){
+            playerNetworkManager.OnLockOnIDChange(0, playerNetworkManager.currentTargetNetworkObjectID.Value);
         }
     }
+
 
 }

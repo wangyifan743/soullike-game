@@ -33,6 +33,11 @@ public class CharacterNetworkManager : NetworkBehaviour
                                                         NetworkVariableReadPermission.Everyone,
                                                         NetworkVariableWritePermission.Owner); 
 
+    [Header("Lock On")]
+    public NetworkVariable<ulong> currentTargetNetworkObjectID = new NetworkVariable<ulong>(0,
+                                                        NetworkVariableReadPermission.Everyone,
+                                                        NetworkVariableWritePermission.Owner);
+
 
     [Header("Stats")]
     public NetworkVariable<int> endurance = new NetworkVariable<int>(10,
@@ -59,10 +64,36 @@ public class CharacterNetworkManager : NetworkBehaviour
                                                         NetworkVariableReadPermission.Everyone,
                                                         NetworkVariableWritePermission.Owner);  
 
+
+    [Header("Flags")]
+    public NetworkVariable<bool> isLockedOn = new NetworkVariable<bool>(false,
+                                                                NetworkVariableReadPermission.Everyone,
+                                                                NetworkVariableWritePermission.Owner);
+
+
+    public NetworkVariable<bool> isChargingAttack = new NetworkVariable<bool>(false,
+                                                                NetworkVariableReadPermission.Everyone,
+                                                                NetworkVariableWritePermission.Owner);
      
 
     protected virtual void Awake(){
         characterManager = GetComponent<CharacterManager>();
+    }
+
+    public void OnISChargingAttackChange(bool oldState, bool newState){
+        characterManager.animator.SetBool("isChargingAttack", newState);
+    }
+
+    public void OnLockOnChange(bool oldLockOn, bool newLockOn){
+        if(!newLockOn){
+            characterManager.characterCombatManager.currentAttackTarget = null;
+        }
+    }
+
+    public void OnLockOnIDChange(ulong oldID, ulong newID){
+        if(!IsOwner){
+            characterManager.characterCombatManager.currentAttackTarget = NetworkManager.Singleton.SpawnManager.SpawnedObjects[newID].gameObject.GetComponent<CharacterManager>();
+        }
     }
 
     [ServerRpc]

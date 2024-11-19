@@ -52,12 +52,20 @@ public class PlayerNetworkManager : CharacterNetworkManager
         playerManager.playerInventoryManager.currentRightHandWeapon = newWeapon;
         playerManager.playerEquipmentManager.LoadWeaponOnRightHand();
 
+
+        if(playerManager.IsOwner){
+            PlayerUIManager.instance.playerUIHUDManager.SetRightWeaponQuickSlotIcon(newID);
+        }
     }
 
     public void OnCurrentleftHandWeaponIDChange(int oldID, int newID){
         WeaponItem newWeapon = Instantiate(WorldItemDatabase.instance.GetWeaponByID(newID));
         playerManager.playerInventoryManager.currentLeftHandWeapon = newWeapon;
         playerManager.playerEquipmentManager.LoadWeaponOnLeftHand();
+
+        if(playerManager.IsOwner){
+            PlayerUIManager.instance.playerUIHUDManager.SetLeftWeaponQuickSlotIcon(newID);
+        }
     }
 
     public void OnCurrentWeaponBeingUsedIDChange(int oldID, int newID){

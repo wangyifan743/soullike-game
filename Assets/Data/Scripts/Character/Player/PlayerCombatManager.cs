@@ -9,6 +9,9 @@ public class PlayerCombatManager : CharacterCombatManager
     PlayerManager playerManager;
     public WeaponItem currentWeaponBeingUsed;
 
+    [Header("Flags")]
+    public bool canComboWithMainHandWeapon = false;
+
     protected override void Awake()
     {
         base.Awake();
@@ -33,6 +36,8 @@ public class PlayerCombatManager : CharacterCombatManager
             return;
 
         float staminaDeducted = 0;
+
+        // 根据伤害类型扣除体力
         switch (currentAttackType)
         {
             case AttackType.LightAttack01:
@@ -44,4 +49,6 @@ public class PlayerCombatManager : CharacterCombatManager
         }
         playerManager.playerNetworkManager.currentStamina.Value -= staminaDeducted;
     }
+
+    
 }

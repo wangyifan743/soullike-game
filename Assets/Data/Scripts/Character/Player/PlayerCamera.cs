@@ -26,6 +26,15 @@ public class PlayerCamera : MonoBehaviour
     private float idealCameraZPosition;
     private float targetCameraZPosition;
 
+    [Header("Lock On")]
+    [SerializeField] float loackOnRadius = 20f;
+    [SerializeField] float minimumViewableAngle = -50;
+    [SerializeField] float maximumViewableAngle = 50;
+    [SerializeField] float maximumLockOnDistance = 20;
+    [SerializeField] float lockOnTargetFollowSpeed = 0.2f;
+    private List<CharacterManager> availableTargets = new List<CharacterManager>();
+    public CharacterManager nearestLockOnTarget;
+
     private void Awake() {
         if(instance == null){
             instance = this;
@@ -60,21 +69,43 @@ public class PlayerCamera : MonoBehaviour
     }
 
     private void HandleRotations(){
-        leftAndRightLookAngle += PlayerInputManager.instance.horizontalCameraInput * leftAndRightRotationSpeed * Time.deltaTime;
-        upAndDownLookAngle -= PlayerInputManager.instance.vertiCalcameralInput * upAndDownRotationSpeed * Time.deltaTime;
-        upAndDownLookAngle = Mathf.Clamp( upAndDownLookAngle, minimumPivot, maximumPivot);
+        // 如果锁定目标，相机的旋转
+        if(playerManager.playerNetworkManager.isLockedOn.Value){
+            Vector3 rotateDirection = playerManager.playerCombatManager.currentAttackTarget.characterCombatManager.lockOnTransform.position - transform.position;
+            rotateDirection.Normalize();
+            rotateDirection.y = 0;
+            Quaternion targetRotation = Quaternion.LookRotation(rotateDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, lockOnTargetFollowSpeed);
 
-        Vector3 cameraRotation = Vector3.zero;
-        Quaternion newRotation;
-        // 水平方向旋转
-        cameraRotation.y = leftAndRightLookAngle;
-        newRotation = Quaternion.Euler(cameraRotation);
-        transform.rotation = newRotation;
-        // 垂直方向旋转
-        cameraRotation = Vector3.zero;
-        cameraRotation.x = upAndDownLookAngle;
-        newRotation = Quaternion.Euler(cameraRotation);
-        cameraPivotTransform.localRotation = newRotation;
+            // ????
+            rotateDirection = playerManager.playerCombatManager.currentAttackTarget.characterCombatManager.lockOnTransform.position - cameraPivotTransform.position;
+            rotateDirection.Normalize();
+            targetRotation = Quaternion.LookRotation(rotateDirection);
+            cameraPivotTransform.transform.rotation = Quaternion.Slerp(cameraPivotTransform.rotation, targetRotation, lockOnTargetFollowSpeed);
+
+            // ???
+            leftAndRightLookAngle = transform.eulerAngles.y;
+            upAndDownLookAngle = transform.eulerAngles.x;
+        }
+        // 没有锁定目标，相机的旋转
+        else
+        {
+            leftAndRightLookAngle += PlayerInputManager.instance.horizontalCameraInput * leftAndRightRotationSpeed * Time.deltaTime;
+            upAndDownLookAngle -= PlayerInputManager.instance.vertiCalcameralInput * upAndDownRotationSpeed * Time.deltaTime;
+            upAndDownLookAngle = Mathf.Clamp( upAndDownLookAngle, minimumPivot, maximumPivot);
+
+            Vector3 cameraRotation = Vector3.zero;
+            Quaternion newRotation;
+            // 水平方向旋转
+            cameraRotation.y = leftAndRightLookAngle;
+            newRotation = Quaternion.Euler(cameraRotation);
+            transform.rotation = newRotation;
+            // 垂直方向旋转
+            cameraRotation = Vector3.zero;
+            cameraRotation.x = upAndDownLookAngle;
+            newRotation = Quaternion.Euler(cameraRotation);
+            cameraPivotTransform.localRotation = newRotation;
+        }
 
     }
 
@@ -98,6 +129,67 @@ public class PlayerCamera : MonoBehaviour
 
         cameraObjectPosition.z = Mathf.Lerp(cameraObject.transform.localPosition.z, targetCameraZPosition, 0.2f);
         cameraObject.transform.localPosition = cameraObjectPosition;
+    }
+
+    public void HandleLocatingLockOnTarget(){
+      
+        float shortDistance = Mathf.Infinity;
+        float shortDistanceOfRightTarget = Mathf.Infinity;
+        float shortDistanceOfLeftTarget = -Mathf.Infinity;
+
+        Collider[] colliders = Physics.OverlapSphere(playerManager.transform.position, loackOnRadius, WorldUtilityManager.instance.GetCharacterLayers());
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            CharacterManager lockOnTarget = colliders[i].GetComponent<CharacterManager>();
+            if(lockOnTarget != null){
+                Vector3 lockOnDirection = lockOnTarget.transform.position - playerManager.transform.position;
+                lockOnDirection.Normalize();
+                float distanceFromTarget = Vector3.Distance(playerManager.transform.position, lockOnTarget.transform.position);
+                float viewableAngle = Vector3.Angle(lockOnDirection, cameraObject.transform.forward);
+
+                if(lockOnTarget.isDead.Value)
+                    continue;
+                
+                if(lockOnTarget.transform.root == playerManager.transform.root)
+                    continue;
+
+                if(distanceFromTarget > maximumLockOnDistance)
+                    continue;
+                
+                if(viewableAngle >= minimumViewableAngle && viewableAngle <= maximumViewableAngle){
+                    RaycastHit hit;
+
+
+                    if(Physics.Linecast(playerManager.playerCombatManager.lockOnTransform.position, lockOnTarget.characterCombatManager.lockOnTransform.position, out hit, WorldUtilityManager.instance.GetEnviromentLayers())){
+                        continue;
+                    }
+                    else{
+                        availableTargets.Add(lockOnTarget);
+                    }
+                }
+            }
+        }
+
+        for (int k = 0; k < availableTargets.Count; k++)
+        {
+            if(availableTargets[k]!=null){
+                float distanceFromTarget = Vector3.Distance(playerManager.transform.position, availableTargets[k].transform.position);
+
+                if(distanceFromTarget < shortDistance){
+                    shortDistance = distanceFromTarget;
+                    nearestLockOnTarget = availableTargets[k];
+                }
+            }
+
+        }
+
+
+    }
+
+    public void ClearLockOnTargets(){
+        nearestLockOnTarget = null;
+        availableTargets.Clear();
     }
 
 }

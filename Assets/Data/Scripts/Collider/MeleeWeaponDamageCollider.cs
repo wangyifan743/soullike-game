@@ -9,6 +9,13 @@ public class MeleeWeaponDamageCollider : DamageCollider
 
     [Header("Weapon_Attack_Modifiers")]
     public float light_Attack_01_Modifier;
+    public float light_Attack_02_Modifier;
+    public float heavy_Attack_01_Modifier;
+    public float heavy_Attack_02_Modifier;
+    public float charge_Attack_01_Modifier;
+
+    public float charge_Attack_02_Modifier;
+
 
     protected override void Awake()
     {
@@ -48,11 +55,27 @@ public class MeleeWeaponDamageCollider : DamageCollider
         takeDamageEffect.holyDamage = holyDamage;
         takeDamageEffect.poiseDamage = poiseDamage;
         takeDamageEffect.contactPoint = contactPoint;
+        takeDamageEffect.angleHitFrom = Vector3.SignedAngle(characterCausingDamage.transform.forward, damageTarget.transform.forward, Vector3.up);
 
         switch (characterCausingDamage.characterCombatManager.currentAttackType)
         {
             case AttackType.LightAttack01:
                 ApplyAttackDamageModifier(light_Attack_01_Modifier, takeDamageEffect);
+                break;
+            case AttackType.LightAttack02:
+                ApplyAttackDamageModifier(light_Attack_02_Modifier, takeDamageEffect);
+                break;
+            case AttackType.HeavyAttack01:
+                ApplyAttackDamageModifier(heavy_Attack_01_Modifier, takeDamageEffect);
+                break;
+            case AttackType.HeavyAttack02:
+                ApplyAttackDamageModifier(heavy_Attack_02_Modifier, takeDamageEffect);
+                break;
+            case AttackType.ChargeAttack01:
+                ApplyAttackDamageModifier(charge_Attack_01_Modifier, takeDamageEffect);
+                break;
+            case AttackType.ChargeAttack02:
+                ApplyAttackDamageModifier(charge_Attack_02_Modifier, takeDamageEffect);
                 break;
             default:
                 break;
